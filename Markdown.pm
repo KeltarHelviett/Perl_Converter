@@ -4,37 +4,35 @@ use warnings;
 my $parseList = sub {
 	my $s = shift;
 	my @lines = split /\n/, $s;
-	say @lines;
-	my ($nestingLvl, @nesting) = -1;
+	my ($nestingLvl, @nesting, $closed) = -1;
 	foreach my $line (@lines) {
 		if ($line =~ m/( +)(\*|-) (.*)($|\n)/g) {
+			$closed = undef;
 			my $spaces = length $1;
-			say "Current length of spaces $spaces";
+			my ($ul, $_ul) = (0, 0);
 			if ($nestingLvl < $spaces) {
-				say " pushed ";
 				$nestingLvl = $spaces;
 				push @nesting, $nestingLvl;
-				$line =~ s/(\*|-) (.*)($|\n)/<ul><li>$2<\/li>/;
+				$ul = 1;
 			}
 			elsif ($nestingLvl > $spaces) {
 				$nestingLvl = $spaces;
-				$line =~ s/(\*|-) (.*)($|\n)/<li>$2<\/li>/;
-				say pop(@nesting);
-				my $ul = 1;
-				while (pop(@nesting) != $nestingLvl) {
-					say " poped ";
-					$ul++;
-				}
+				pop(@nesting);
+				$_ul = 1;
+				$_ul++ while pop(@nesting) != $nestingLvl;
 				push @nesting, $spaces;
-				say $ul;
-				$line = ('</ul>' x $ul) . $line;
 			}
-			else {
-				say " same level ";
-				$line =~ s/(\*|-) (.*)($|\n)/<li>$2<\/li>/;
+			$line =~ s/(\*|-) (.*)($|\n)/<li>$2<\/li>/;
+			$line = ('<ul>' x $ul) . ('</ul>' x $_ul) . $line;
+		}
+		else {
+			if (!$closed) {
+				$line = '</ul>' . $line;
+				$closed = 1;
 			}
 		}
 	}
+	push @lines, '</ul>' if !$closed;
 	return join("\n", @lines);
 };
 
@@ -105,7 +103,6 @@ sub MarkdownToHTML {
 	for my $i (0..@p - 1) {
 		for my $j (0..@toHTML - 1) {
 			$p[$i] = $toHTML[$j]($p[$i]);
-			# say $p[$i];
 		}
 	}
 	close $fin;
